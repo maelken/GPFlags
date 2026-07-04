@@ -20,22 +20,7 @@
         <build.number>0</build.number>
     </properties>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>lemongaming-repo</id>
-            <url>https://repo.lemongaming.ltd/repository/maven-snapshots/</url>
-        </snapshotRepository>
-        <repository>
-            <id>lemongaming-repo</id>
-            <url>https://repo.lemongaming.ltd/repository/maven-releases/</url>
-        </repository>
-    </distributionManagement>
-
     <repositories>
-        <repository>
-            <id>lemongaming-repo</id>
-            <url>https://repo.lemongaming.ltd/repository/maven-public/</url>
-        </repository>
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
@@ -74,8 +59,8 @@
     </repositories>
     <dependencies>
         <dependency>
-            <groupId>ltd.lemongaming.citrus</groupId>
-            <artifactId>citrus-folia-api</artifactId>
+            <groupId>org.purpurmc.purpur</groupId>
+            <artifactId>purpur-api</artifactId>
             <version>1.21.8-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
