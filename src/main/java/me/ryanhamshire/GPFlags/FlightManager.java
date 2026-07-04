@@ -17,6 +17,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
@@ -209,28 +210,42 @@ public class FlightManager implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     private void onFlyToggle(PlayerToggleFlightEvent event) {
-        if (event.isFlying()) return;
         Player player = event.getPlayer();
-        GPFlags.getScheduler().getImpl().runAtEntityLater(player, () -> {
-            Location location = player.getLocation();
-            Claim claim = GriefPrevention.instance.dataStore.getClaimAt(location, false, null);
-            boolean manageFlight = gpfManagesFlight(player);
-            if (!manageFlight) return;
+        if (!gpfManagesFlight(player)) return;
 
-            if (FlagDef_OwnerMemberFly.letPlayerFly(player, location, claim)) {
+        Location location = player.getLocation();
+        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(location, false, null);
+        Boolean flightAllowed = gpfAllowsFlight(player, location, claim);
+
+        if (event.isFlying()) {
+            if (Boolean.FALSE.equals(flightAllowed)) {
+                event.setCancelled(true);
+                player.setFlying(false);
+                player.setAllowFlight(false);
+                MessagingUtil.sendMessage(player, TextMode.Err, Messages.CantFlyHere);
+            }
+            return;
+        }
+
+        GPFlags.getScheduler().getImpl().runAtEntityLater(player, () -> {
+            Location currentLocation = player.getLocation();
+            Claim currentClaim = GriefPrevention.instance.dataStore.getClaimAt(currentLocation, false, null);
+            if (!gpfManagesFlight(player)) return;
+
+            if (FlagDef_OwnerMemberFly.letPlayerFly(player, currentLocation, currentClaim)) {
                 turnOnFlight(player);
                 return;
             }
-            if (FlagDef_OwnerFly.letPlayerFly(player, location, claim)) {
+            if (FlagDef_OwnerFly.letPlayerFly(player, currentLocation, currentClaim)) {
                 turnOnFlight(player);
                 return;
             }
-            if (!FlagDef_NoFlight.letPlayerFly(player, location, claim)) {
+            if (!FlagDef_NoFlight.letPlayerFly(player, currentLocation, currentClaim)) {
                 return;
             }
-            if (FlagDef_PermissionFly.letPlayerFly(player, location, claim)) {
+            if (FlagDef_PermissionFly.letPlayerFly(player, currentLocation, currentClaim)) {
                 turnOnFlight(player);
                 return;
             }
