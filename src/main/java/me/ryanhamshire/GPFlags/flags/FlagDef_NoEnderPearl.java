@@ -1,6 +1,5 @@
 package me.ryanhamshire.GPFlags.flags;
 
-import ltd.lemongaming.citrus.event.ThrownEnderPearlHitEvent;
 import me.ryanhamshire.GPFlags.Flag;
 import me.ryanhamshire.GPFlags.FlagManager;
 import me.ryanhamshire.GPFlags.FlagsDataStore;
@@ -34,36 +33,44 @@ public class FlagDef_NoEnderPearl extends FlagDefinition {
         super(manager, plugin);
 
         try {
-            Class.forName("ltd.lemongaming.citrus.event.ThrownEnderPearlHitEvent");
+            Class<?> pearlHitEventClass = Class.forName("ltd.lemongaming.citrus.event.ThrownEnderPearlHitEvent");
             Bukkit.getServer().getPluginManager().registerEvents(new Listener() {
                 @EventHandler(priority = EventPriority.HIGHEST)
-                public void onThrownEnderPearlHitEvent(ThrownEnderPearlHitEvent event) {
-                    if (!(event.getSource() instanceof Player)) {
-                        return;
+                public void onThrownEnderPearlHitEvent(org.bukkit.event.Event event) {
+                    try {
+                        if (!pearlHitEventClass.isInstance(event)) {
+                            return;
+                        }
+
+                        Object source = pearlHitEventClass.getMethod("getSource").invoke(event);
+                        if (!(source instanceof Player player)) {
+                            return;
+                        }
+
+                        Object hitBlock = pearlHitEventClass.getMethod("getHitBlock").invoke(event);
+                        Location location = ((org.bukkit.block.Block) hitBlock).getLocation();
+
+                        Flag flag = getFlagInstanceAtLocation(location, player);
+                        if (flag == null) {
+                            return;
+                        }
+
+                        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(location, false, null);
+                        if (Util.shouldBypass(player, claim, flag)) {
+                            return;
+                        }
+
+                        pearlHitEventClass.getMethod("setCancelled", boolean.class).invoke(event, true);
+
+                        String owner = claim.getOwnerName();
+                        String playerName = player.getName();
+
+                        String msg = plugin.getFlagsDataStore().getMessage(Messages.NoEnderPearlInClaim);
+                        msg = msg.replace("{p}", playerName).replace("{o}", owner);
+                        msg = msg.replace("{0}", playerName).replace("{1}", owner);
+                        MessagingUtil.sendMessage(player, TextMode.Warn + msg);
+                    } catch (ReflectiveOperationException ignored) {
                     }
-
-                    Player player = (Player) event.getSource();
-                    Location location = event.getHitBlock().getLocation();
-
-                    Flag flag = getFlagInstanceAtLocation(location, player);
-                    if (flag == null) {
-                        return;
-                    }
-
-                    Claim claim = GriefPrevention.instance.dataStore.getClaimAt(location, false, null);
-                    if (Util.shouldBypass(player, claim, flag)) {
-                        return;
-                    }
-
-                    event.setCancelled(true);
-
-                    String owner = claim.getOwnerName();
-                    String playerName = player.getName();
-
-                    String msg = plugin.getFlagsDataStore().getMessage(Messages.NoEnderPearlInClaim);
-                    msg = msg.replace("{p}", playerName).replace("{o}", owner);
-                    msg = msg.replace("{0}", playerName).replace("{1}", owner);
-                    MessagingUtil.sendMessage(player, TextMode.Warn + msg);
                 }
             }, plugin);
         } catch (ClassNotFoundException ignored) {
